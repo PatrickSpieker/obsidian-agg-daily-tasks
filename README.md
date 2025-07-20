@@ -2,7 +2,7 @@
 
 > **Obsidian Community Plugin** – Collect all unchecked tasks from your Daily Notes and paste them at the cursor in the current note.
 
-![GitHub release (latest by date)](https://img.shields.io/github/v/release/patrickspieker/aggregate-daily-tasks)
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/patrickspieker/obsidian-agg-daily-tasks)
 ![Obsidian version](https://img.shields.io/badge/obsidian-1.6.0%2B-purple)
 
 ## Context
