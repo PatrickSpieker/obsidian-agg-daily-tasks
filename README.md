@@ -5,6 +5,12 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/patrickspieker/aggregate-daily-tasks)
 ![Obsidian version](https://img.shields.io/badge/obsidian-1.6.0%2B-purple)
 
+## Context
+
+I'm always writing thoughts, todos, or tasks in my Obsidian daily notes (often with indeterminate time horizons for completion!), but I don't always get to them throughout the day.
+
+I built this to make sure I don't miss things!
+
 ## Features
 
 | Capability                | Details                                                                          |
@@ -13,7 +19,6 @@
 | **Checked-task override** | If a newer note has the same task _checked_, older unchecked copies are ignored. |
 | **De-duplication**        | Identical unchecked tasks are listed only once (toggle).                         |
 | **Reverse chrono order**  | Outputs newest-to-oldest by default (toggle).                                    |
-| **Grouping (optional)**   | Group tasks under date headings (toggle).                                        |
 | **One-click / command**   | Ribbon icon or `Aggregate Daily Tasks` command palette entry.                    |
 
 ## Installation
@@ -42,7 +47,6 @@ Edit the top of `main.ts` if building from source (or fork + re-compile):
 ```ts
 const DEDUPLICATE = true; // Only unique tasks
 const SORT = false; // Alphabetical list
-const GROUP_BY_DATE = false; // Add #### YYYY-MM-DD headings
 const REVERSE_CHRONO = true; // Newest first
 const OVERRIDE_WITH_NEWER_CHECKED = true; // Supersede with newer checked
 ```

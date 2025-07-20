@@ -9,11 +9,13 @@ import {
 
 const DAILY_NOTE_REGEX = /^\d{4}-\d{2}-\d{2}\.md$/; // Matches YYYY-MM-DD.md
 const UNCHECKED_TASK_REGEX = /^[\t >-]*[-*+]\s+\[ \]\s.+$/; // Markdown unchecked tasks
+
 const DEDUPLICATE = true; // Set false to keep duplicate task lines
 const SORT = false; // Set true if you want alphabetical sorting
-const GROUP_BY_DATE = false; // Set true to group tasks under date headings
 const REVERSE_CHRONO = true; // If true, process daily notes newest (descending) so output is reverse chronological
 const OVERRIDE_WITH_NEWER_CHECKED = true; // If true, a checked task in a newer note suppresses older unchecked duplicates
+const GROUP_BY_DATE = false; // IN BETA: Set true to group tasks under date headings
+
 const CHECKED_TASK_REGEX = /^[\t >-]*[-*+]\s+\[[xX]\]\s.+$/; // Markdown checked tasks
 
 export default class HelloWorldButtonPlugin extends Plugin {
@@ -155,6 +157,7 @@ export default class HelloWorldButtonPlugin extends Plugin {
 
     // 5. Build output
     let output = "### Unchecked Tasks\n\n";
+    // IN BETA - there's a bug here that needs to be fixed before launch
     if (GROUP_BY_DATE) {
       // Insert grouped by date (sorted chronologically)
       const dates = Object.keys(tasksByDate).sort((a, b) => a.localeCompare(b));

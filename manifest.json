@@ -1,7 +1,7 @@
 {
-  "id": "aggregate-daily-tasks",
+  "id": "agg-daily-tasks",
   "name": "Aggregate Daily Tasks",
-  "version": "1.0.0",
+  "version": "0.2.0",
   "minAppVersion": "0.15.0",
   "description": "Aggregates all incomplete tasks from Daily Notes into the current note",
   "author": "Patrick Spieker",
