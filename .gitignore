@@ -1,0 +1,41 @@
+############################################################
+# Core project ignores
+############################################################
+# Node dependencies & debug logs
+node_modules/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build artifacts
+dist/
+build/
+main.js
+main.js.map
+*.bundle.js
+*.d.ts
+.esbuild/
+.rollup.cache/
+*.tsbuildinfo          # TypeScript incremental cache
+
+# Release archives
+*.zip
+
+############################################################
+# Obsidian-specific
+############################################################
+# Local vault copies of plugins / workspace data
+.obsidian/plugins/
+.obsidian/workspace*
+.obsidian/cache/
+
+############################################################
+# Editor & OS cruft
+############################################################
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# macOS / Windows junk
+.DS_Store
