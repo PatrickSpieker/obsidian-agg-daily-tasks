@@ -18,7 +18,7 @@ const GROUP_BY_DATE = false; // IN BETA: Set true to group tasks under date head
 
 const CHECKED_TASK_REGEX = /^[\t >-]*[-*+]\s+\[[xX]\]\s.+$/; // Markdown checked tasks
 
-export default class HelloWorldButtonPlugin extends Plugin {
+export default class AggDailyTasksPlugin extends Plugin {
   constructor(app: App, manifest: PluginManifest) {
     super(app, manifest);
   }
