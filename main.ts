@@ -10,13 +10,21 @@ import {
 const DAILY_NOTE_REGEX = /^\d{4}-\d{2}-\d{2}\.md$/; // Matches YYYY-MM-DD.md
 const UNCHECKED_TASK_REGEX = /^[\t >-]*[-*+]\s+\[ \]\s.+$/; // Markdown unchecked tasks
 
-const DEDUPLICATE = true; // Set false to keep duplicate task lines
-const SORT = false; // Set true if you want alphabetical sorting
-const REVERSE_CHRONO = true; // If true, process daily notes newest (descending) so output is reverse chronological
-const OVERRIDE_WITH_NEWER_CHECKED = true; // If true, a checked task in a newer note suppresses older unchecked duplicates
-const GROUP_BY_DATE = false; // IN BETA: Set true to group tasks under date headings
-
-const CHECKED_TASK_REGEX = /^[\t >-]*[-*+]\s+\[[xX]\]\s.+$/; // Markdown checked tasks
+// Import pure functions from separate module
+import {
+  FileContent,
+  extractCheckedTasks,
+  processTasksWithOverrides,
+  createTaskOwnershipMap,
+  buildFinalTasksByDate,
+  buildNonGroupedTasks,
+  generateOutput,
+  DEDUPLICATE,
+  SORT,
+  REVERSE_CHRONO,
+  OVERRIDE_WITH_NEWER_CHECKED,
+  GROUP_BY_DATE,
+} from "./functions";
 
 export default class AggDailyTasksPlugin extends Plugin {
   constructor(app: App, manifest: PluginManifest) {
@@ -47,10 +55,72 @@ export default class AggDailyTasksPlugin extends Plugin {
       return;
     }
 
-    // 1. Collect daily note files
+    // 1. Get daily note files (excluding today)
+    var dailyFiles = this.getDailyNoteFiles();
+    if (dailyFiles.length === 0) {
+      new Notice("No daily notes matching YYYY-MM-DD.md found.");
+      return;
+    }
+
+    // 2. Read file contents
+    const fileContents = await this.readDailyNoteFiles(dailyFiles);
+    if (fileContents.length === 0) {
+      new Notice("No readable daily notes found.");
+      return;
+    }
+
+    // 3. Process tasks using pure functions
+    const newerChecked = extractCheckedTasks(fileContents);
+    const { tasksByDate, allTasks } = processTasksWithOverrides(
+      fileContents,
+      newerChecked,
+      REVERSE_CHRONO
+    );
+
+    if (allTasks.length === 0) {
+      new Notice("No unchecked tasks found in daily notes.");
+      return;
+    }
+
+    // 4. Generate final output
+    let finalOutput: string;
+    let taskCount: number;
+
+    if (GROUP_BY_DATE) {
+      const taskOwnership = createTaskOwnershipMap(tasksByDate);
+      const { finalTasksByDate, allFinalTasks } = buildFinalTasksByDate(
+        tasksByDate,
+        taskOwnership,
+        SORT
+      );
+      finalOutput = generateOutput(
+        finalTasksByDate,
+        allFinalTasks,
+        REVERSE_CHRONO
+      );
+      taskCount = allFinalTasks.length;
+    } else {
+      const finalTasks = buildNonGroupedTasks(allTasks, SORT);
+      finalOutput = generateOutput({}, finalTasks, REVERSE_CHRONO);
+      taskCount = finalTasks.length;
+    }
+
+    // 5. Insert output and show notice
+    const editor = view.editor;
+    editor.replaceSelection(finalOutput);
+
+    new Notice(
+      `Inserted ${taskCount} unchecked task${taskCount === 1 ? "" : "s"}.`
+    );
+  }
+
+  private getDailyNoteFiles(): TFile[] {
+    const today = new Date().toISOString().split("T")[0]; // Format: YYYY-MM-DD
+    const todayFileName = `${today}.md`;
+
     const dailyFiles: TFile[] = this.app.vault
       .getMarkdownFiles()
-      .filter((f) => DAILY_NOTE_REGEX.test(f.name));
+      .filter((f) => DAILY_NOTE_REGEX.test(f.name) && f.name !== todayFileName);
 
     // Sort daily files chronologically then optionally reverse for reverse-chronological processing
     dailyFiles.sort((a, b) => a.basename.localeCompare(b.basename));
@@ -58,135 +128,26 @@ export default class AggDailyTasksPlugin extends Plugin {
       dailyFiles.reverse();
     }
 
-    if (dailyFiles.length === 0) {
-      new Notice("No daily notes matching YYYY-MM-DD.md found.");
-      return;
-    }
+    return dailyFiles;
+  }
 
-    // 2. Read & extract tasks with override logic
-    const tasksByDate: Record<string, string[]> = {};
-    // We'll first read all files storing both checked and unchecked for override processing.
-    const fileContents: { file: TFile; lines: string[] }[] = [];
+  private async readDailyNoteFiles(
+    dailyFiles: TFile[]
+  ): Promise<FileContent[]> {
+    const fileContents: FileContent[] = [];
 
     for (const file of dailyFiles) {
       try {
         const content = await this.app.vault.read(file);
-        fileContents.push({ file, lines: content.split(/\r?\n/) });
+        fileContents.push({
+          fileName: file.basename,
+          lines: content.split(/\r?\n/),
+        });
       } catch (e) {
         console.error(`Failed reading ${file.path}:`, e);
       }
     }
 
-    const normalizeTaskText = (line: string): string | null => {
-      const m = line.match(/^[\t >-]*[-*+]\s+\[[ xX]\]\s+(.*)$/);
-      return m ? m[1].trim() : null;
-    };
-
-    // Build a set of task texts that appear as CHECKED in a newer note (date-wise).
-    // We iterate newest -> oldest regardless of output order.
-    const filesNewestToOldest = [...fileContents].sort((a, b) =>
-      b.file.basename.localeCompare(a.file.basename)
-    );
-    const newerChecked = new Set<string>();
-    for (const { lines } of filesNewestToOldest) {
-      for (const line of lines) {
-        if (CHECKED_TASK_REGEX.test(line)) {
-          const txt = normalizeTaskText(line);
-          if (txt) newerChecked.add(txt);
-        }
-      }
-    }
-
-    let allTasks: string[] = [];
-
-    // Now collect unchecked tasks, skipping those overridden by a newer checked version.
-    for (const { file, lines } of REVERSE_CHRONO
-      ? filesNewestToOldest
-      : [...fileContents].sort((a, b) =>
-          a.file.basename.localeCompare(b.file.basename)
-        )) {
-      const included: string[] = [];
-      for (const line of lines) {
-        if (UNCHECKED_TASK_REGEX.test(line)) {
-          const txt = normalizeTaskText(line);
-          if (
-            txt &&
-            OVERRIDE_WITH_NEWER_CHECKED &&
-            newerChecked.has(txt) &&
-            // Ensure the *current* file isn't the one providing the checked instance (i.e., only suppress if a *newer* note has it checked)
-            !lines.some(
-              (l) => CHECKED_TASK_REGEX.test(l) && normalizeTaskText(l) === txt
-            )
-          ) {
-            continue; // suppressed by newer checked task
-          }
-          included.push(line);
-          allTasks.push(line);
-        }
-      }
-      if (included.length) {
-        tasksByDate[file.basename] = included;
-      }
-    }
-
-    if (allTasks.length === 0) {
-      new Notice("No unchecked tasks found in daily notes.");
-      return;
-    }
-
-    // 3. Optional de-duplication
-    let finalTasks = allTasks;
-    if (DEDUPLICATE) {
-      const seen = new Set<string>();
-      finalTasks = [];
-      for (const t of allTasks) {
-        const key = t.trim();
-        if (!seen.has(key)) {
-          seen.add(key);
-          finalTasks.push(t);
-        }
-      }
-    }
-
-    // 4. Optional sorting
-    if (SORT) {
-      finalTasks = finalTasks
-        .slice()
-        .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
-    }
-
-    // 5. Build output
-    let output = "### Unchecked Tasks\n\n";
-    // IN BETA - there's a bug here that needs to be fixed before launch
-    if (GROUP_BY_DATE) {
-      // Insert grouped by date (sorted chronologically)
-      const dates = Object.keys(tasksByDate).sort((a, b) => a.localeCompare(b));
-      if (REVERSE_CHRONO) {
-        dates.reverse();
-      }
-      for (const date of dates) {
-        const dateTasks = tasksByDate[date].filter((t) => {
-          if (!DEDUPLICATE) return true;
-          // If deduping, only include tasks that are in finalTasks
-          return finalTasks.includes(t);
-        });
-        if (dateTasks.length) {
-          output += `#### ${date}\n`;
-          output += dateTasks.join("\n") + "\n\n";
-        }
-      }
-    } else {
-      output += finalTasks.join("\n") + "\n";
-    }
-
-    // 6. Insert at current cursor
-    const editor = view.editor;
-    editor.replaceSelection(output);
-
-    new Notice(
-      `Inserted ${finalTasks.length} unchecked task${
-        finalTasks.length === 1 ? "" : "s"
-      }.`
-    );
+    return fileContents;
   }
 }
