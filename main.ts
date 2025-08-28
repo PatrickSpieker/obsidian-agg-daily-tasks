@@ -19,11 +19,7 @@ import {
   buildFinalTasksByDate,
   buildNonGroupedTasks,
   generateOutput,
-  DEDUPLICATE,
-  SORT,
-  REVERSE_CHRONO,
-  OVERRIDE_WITH_NEWER_CHECKED,
-  GROUP_BY_DATE,
+  TasksForDate,
 } from "./functions";
 
 export default class AggDailyTasksPlugin extends Plugin {
@@ -55,27 +51,36 @@ export default class AggDailyTasksPlugin extends Plugin {
       return;
     }
 
-    // 1. Get daily note files (excluding today)
-    var dailyFiles = this.getDailyNoteFiles();
-    if (dailyFiles.length === 0) {
-      new Notice("No daily notes matching YYYY-MM-DD.md found.");
-      return;
-    }
-
-    // 2. Read file contents
-    const fileContents = await this.readDailyNoteFiles(dailyFiles);
+    // 1. Get file contents
+    const fileContents = await this.getDailyNoteFilesWithContents();
     if (fileContents.length === 0) {
       new Notice("No readable daily notes found.");
       return;
     }
 
-    // 3. Process tasks using pure functions
-    const newerChecked = extractCheckedTasks(fileContents);
-    const { tasksByDate, allTasks } = processTasksWithOverrides(
-      fileContents,
-      newerChecked,
-      REVERSE_CHRONO
-    );
+    // Extract all tasks into
+    // current state - [date, [Array<string>, Array<string>]], sorted by string
+    let sortedCurrentTasksState: Array<TasksForDate> = [];
+
+    for (const fileStruct of fileContents) {
+      const checkedTasks = ;
+      for (const line of fileStruct.lines) {
+        if (CHECKED_TASK_REGEX.test(line)) {
+          const txt = normalizeTaskText(line);
+          if (txt) newerChecked.add(txt);
+        }
+      }
+    }
+    // first one is checked, second one is unchecked. Strings should have the checkbox removed
+    // getAllTasksByDateSortedDescending
+
+    // create an output data stucture [date, Array<string>] for all of the unchecked tasks we'll be aggregating
+    // create a set for the checked tasks to get put in as we traverse
+    // loop over the current state structure, for the date
+    //  check it's unchecked tasks against the Check Tasks set
+    //  add the checked tasks for the date to the check tasks set
+    //
+    // 2. Process tasks using pure functions
 
     if (allTasks.length === 0) {
       new Notice("No unchecked tasks found in daily notes.");
@@ -86,24 +91,8 @@ export default class AggDailyTasksPlugin extends Plugin {
     let finalOutput: string;
     let taskCount: number;
 
-    if (GROUP_BY_DATE) {
-      const taskOwnership = createTaskOwnershipMap(tasksByDate);
-      const { finalTasksByDate, allFinalTasks } = buildFinalTasksByDate(
-        tasksByDate,
-        taskOwnership,
-        SORT
-      );
-      finalOutput = generateOutput(
-        finalTasksByDate,
-        allFinalTasks,
-        REVERSE_CHRONO
-      );
-      taskCount = allFinalTasks.length;
-    } else {
-      const finalTasks = buildNonGroupedTasks(allTasks, SORT);
-      finalOutput = generateOutput({}, finalTasks, REVERSE_CHRONO);
-      taskCount = finalTasks.length;
-    }
+    finalOutput = generateOutput(finalTasksByDate, allFinalTasks);
+    taskCount = allFinalTasks.length;
 
     // 5. Insert output and show notice
     const editor = view.editor;
@@ -114,7 +103,11 @@ export default class AggDailyTasksPlugin extends Plugin {
     );
   }
 
-  private getDailyNoteFiles(): TFile[] {
+  /**
+   *
+   * @returns Promise of an Array of descending order by date FileContent objects for the daily notes
+   */
+  private async getDailyNoteFilesWithContents(): Promise<FileContent[]> {
     const today = new Date().toISOString().split("T")[0]; // Format: YYYY-MM-DD
     const todayFileName = `${today}.md`;
 
@@ -122,18 +115,6 @@ export default class AggDailyTasksPlugin extends Plugin {
       .getMarkdownFiles()
       .filter((f) => DAILY_NOTE_REGEX.test(f.name) && f.name !== todayFileName);
 
-    // Sort daily files chronologically then optionally reverse for reverse-chronological processing
-    dailyFiles.sort((a, b) => a.basename.localeCompare(b.basename));
-    if (REVERSE_CHRONO) {
-      dailyFiles.reverse();
-    }
-
-    return dailyFiles;
-  }
-
-  private async readDailyNoteFiles(
-    dailyFiles: TFile[]
-  ): Promise<FileContent[]> {
     const fileContents: FileContent[] = [];
 
     for (const file of dailyFiles) {
