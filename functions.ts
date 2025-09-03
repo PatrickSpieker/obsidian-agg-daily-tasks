@@ -50,8 +50,54 @@ export const parseTasksForDate = (noteContents: FileContent): TasksForDate => {
   return tfd;
 };
 
-export const generateOutput = (allFinalTasks: string[]): string => {
+export const filterAndAggregateTasks = (
+  currentState: Array<TasksForDate>
+): Array<TasksForDate> => {
+  let newState: Array<TasksForDate> = [];
+
+  let checkedTasksSet: Set<string> = new Set();
+  let uncheckedTasksSet: Set<string> = new Set();
+
+  for (const tfd of currentState) {
+    let uncheckedTasksForDay = tfd.uncheckedTasks;
+    let checkedTasksForDay = tfd.checkedTasks;
+
+    let newUncheckedTasks: Array<string> = [];
+
+    for (const uct of uncheckedTasksForDay) {
+      if (!uncheckedTasksSet.has(uct) && !checkedTasksSet.has(uct)) {
+        newUncheckedTasks.push(uct);
+        uncheckedTasksSet.add(uct);
+      }
+    }
+
+    for (const ct of checkedTasksForDay) {
+      checkedTasksSet.add(ct);
+    }
+
+    if (newUncheckedTasks.length > 0) {
+      let newTasksForDate: TasksForDate = {
+        date: tfd.date,
+        uncheckedTasks: newUncheckedTasks,
+        checkedTasks: [],
+      };
+      newState.push(newTasksForDate);
+    }
+  }
+
+  return newState;
+};
+
+export const generateOutput = (allFinalTasks: Array<TasksForDate>): string => {
   let output = "";
+
+  for (const tfd of allFinalTasks) {
+    output += tfd.date.toISOString().split("T")[0] + "\n";
+    for (const t of tfd.uncheckedTasks) {
+      output += "- [ ] " + t + "\n";
+    }
+    output += "\n";
+  }
 
   return output;
 };

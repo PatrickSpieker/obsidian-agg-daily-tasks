@@ -15,6 +15,7 @@ import {
   FileContent,
   generateOutput,
   parseTasksForDate,
+  filterAndAggregateTasks,
   TasksForDate,
 } from "./functions";
 
@@ -65,31 +66,27 @@ export default class AggDailyTasksPlugin extends Plugin {
       sortedCurrentTasksState.push(tfd);
     }
 
-    /** 
-    - take sorted tasks state
-    - output TasksForDate with only unchecked 
-    */
-    // first one is checked, second one is unchecked. Strings should have the checkbox removed
-    // getAllTasksByDateSortedDescending
+    sortedCurrentTasksState = sortedCurrentTasksState.sort((a, b) => {
+      return b.date.getTime() - a.date.getTime();
+    });
 
-    // create an output data stucture [date, Array<string>] for all of the unchecked tasks we'll be aggregating
-    // create a set for the checked tasks to get put in as we traverse
-    // loop over the current state structure, for the date
-    //  check it's unchecked tasks against the Check Tasks set
-    //  add the checked tasks for the date to the check tasks set
-    //
+    let sortedNewTasksState: Array<TasksForDate> = filterAndAggregateTasks(
+      sortedCurrentTasksState
+    );
 
-    if (allTasks.length === 0) {
+    if (sortedNewTasksState.length === 0) {
       new Notice("No unchecked tasks found in daily notes.");
       return;
     }
 
     // 4. Generate final output
     let finalOutput: string;
-    let taskCount: number;
+    let taskCount = 0;
 
-    finalOutput = generateOutput(finalTasksByDate, allFinalTasks);
-    taskCount = allFinalTasks.length;
+    for (const t of sortedNewTasksState) {
+      taskCount += t.uncheckedTasks.length;
+    }
+    finalOutput = generateOutput(sortedNewTasksState);
 
     // 5. Insert output and show notice
     const editor = view.editor;
