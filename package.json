@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "esbuild main.ts --bundle --external:obsidian --format=cjs --platform=node --outfile=main.js --watch",
     "build": "esbuild main.ts --bundle --external:obsidian --format=cjs --platform=node --outfile=main.js --minify",
-    "test": "vitest",
+    "test": "vitest --inspect-brk --no-file-parallelism",
     "test:run": "vitest run",
     "test:ui": "vitest --ui"
   },

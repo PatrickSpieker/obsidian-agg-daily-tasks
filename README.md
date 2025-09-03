@@ -50,3 +50,5 @@ const SORT = false; // Alphabetical list
 const REVERSE_CHRONO = true; // Newest first
 const OVERRIDE_WITH_NEWER_CHECKED = true; // Supersede with newer checked
 ```
+
+### Development

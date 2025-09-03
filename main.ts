@@ -13,12 +13,8 @@ const UNCHECKED_TASK_REGEX = /^[\t >-]*[-*+]\s+\[ \]\s.+$/; // Markdown unchecke
 // Import pure functions from separate module
 import {
   FileContent,
-  extractCheckedTasks,
-  processTasksWithOverrides,
-  createTaskOwnershipMap,
-  buildFinalTasksByDate,
-  buildNonGroupedTasks,
   generateOutput,
+  parseTasksForDate,
   TasksForDate,
 } from "./functions";
 
@@ -52,25 +48,27 @@ export default class AggDailyTasksPlugin extends Plugin {
     }
 
     // 1. Get file contents
-    const fileContents = await this.getDailyNoteFilesWithContents();
+    const fileContents: FileContent[] =
+      await this.getDailyNoteFilesWithContents();
     if (fileContents.length === 0) {
       new Notice("No readable daily notes found.");
       return;
     }
 
     // Extract all tasks into
-    // current state - [date, [Array<string>, Array<string>]], sorted by string
+    // current state - [TasksForDate], sorted by string
+
     let sortedCurrentTasksState: Array<TasksForDate> = [];
 
-    for (const fileStruct of fileContents) {
-      const checkedTasks = ;
-      for (const line of fileStruct.lines) {
-        if (CHECKED_TASK_REGEX.test(line)) {
-          const txt = normalizeTaskText(line);
-          if (txt) newerChecked.add(txt);
-        }
-      }
+    for (const fc of fileContents) {
+      const tfd = parseTasksForDate(fc);
+      sortedCurrentTasksState.push(tfd);
     }
+
+    /** 
+    - take sorted tasks state
+    - output TasksForDate with only unchecked 
+    */
     // first one is checked, second one is unchecked. Strings should have the checkbox removed
     // getAllTasksByDateSortedDescending
 
@@ -80,7 +78,6 @@ export default class AggDailyTasksPlugin extends Plugin {
     //  check it's unchecked tasks against the Check Tasks set
     //  add the checked tasks for the date to the check tasks set
     //
-    // 2. Process tasks using pure functions
 
     if (allTasks.length === 0) {
       new Notice("No unchecked tasks found in daily notes.");
