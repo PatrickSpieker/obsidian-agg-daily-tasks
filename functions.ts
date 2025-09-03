@@ -21,13 +21,6 @@ export const normalizeTaskText = (line: string): string | null => {
   return m ? m[1].trim() : null;
 };
 
-// export const getCurrentTasksStateSortedByDate = (
-//   vaultContents: Promise<FileContent[]>
-// ): Array<TasksForDate> => {
-//   let sortedCurrentTasksState: Array<TasksForDate> = [];
-//   return sortedCurrentTasksState;
-// };
-
 export const parseTasksForDate = (noteContents: FileContent): TasksForDate => {
   let uncheckedTasks = [];
   let checkedTasks = [];
@@ -43,7 +36,7 @@ export const parseTasksForDate = (noteContents: FileContent): TasksForDate => {
 
   let tfd: TasksForDate = {
     // assuming iso xxxx here
-    date: new Date(noteContents.fileName.slice(0, -3)),
+    date: new Date(noteContents.fileName),
     uncheckedTasks: uncheckedTasks,
     checkedTasks: checkedTasks,
   };
@@ -53,11 +46,13 @@ export const parseTasksForDate = (noteContents: FileContent): TasksForDate => {
 export const filterAndAggregateTasks = (
   currentState: Array<TasksForDate>
 ): Array<TasksForDate> => {
-  let newState: Array<TasksForDate> = [];
+  // OLDEST unchecked should win
+  // if a task is checked in the future, remove it from
+  let newStateWithDup: Array<TasksForDate> = [];
 
   let checkedTasksSet: Set<string> = new Set();
-  let uncheckedTasksSet: Set<string> = new Set();
 
+  // moving from present to past, removing all tasks in past that are checked in the future
   for (const tfd of currentState) {
     let uncheckedTasksForDay = tfd.uncheckedTasks;
     let checkedTasksForDay = tfd.checkedTasks;
@@ -65,9 +60,8 @@ export const filterAndAggregateTasks = (
     let newUncheckedTasks: Array<string> = [];
 
     for (const uct of uncheckedTasksForDay) {
-      if (!uncheckedTasksSet.has(uct) && !checkedTasksSet.has(uct)) {
+      if (!checkedTasksSet.has(uct)) {
         newUncheckedTasks.push(uct);
-        uncheckedTasksSet.add(uct);
       }
     }
 
@@ -81,18 +75,48 @@ export const filterAndAggregateTasks = (
         uncheckedTasks: newUncheckedTasks,
         checkedTasks: [],
       };
+      newStateWithDup.push(newTasksForDate);
+    }
+  }
+
+  let newState: Array<TasksForDate> = [];
+
+  let uncheckedTasksSet: Set<string> = new Set();
+  for (let i = newStateWithDup.length - 1; i >= 0; i--) {
+    const tfd = newStateWithDup[i];
+
+    const uncheckedTasksForDay = tfd.uncheckedTasks;
+
+    let newUncheckedTasks: Array<string> = [];
+
+    for (const uct of uncheckedTasksForDay) {
+      if (!uncheckedTasksSet.has(uct)) {
+        newUncheckedTasks.push(uct);
+        uncheckedTasksSet.add(uct);
+      }
+    }
+
+    if (newUncheckedTasks.length > 0) {
+      let newTasksForDate: TasksForDate = {
+        date: tfd.date,
+        uncheckedTasks: newUncheckedTasks,
+        checkedTasks: [],
+      };
       newState.push(newTasksForDate);
     }
   }
 
-  return newState;
+  // resorting
+  return newState.sort((a, b) => {
+    return b.date.getTime() - a.date.getTime();
+  });
 };
 
 export const generateOutput = (allFinalTasks: Array<TasksForDate>): string => {
   let output = "";
 
   for (const tfd of allFinalTasks) {
-    output += tfd.date.toISOString().split("T")[0] + "\n";
+    output += "#### " + tfd.date.toISOString().split("T")[0] + "\n";
     for (const t of tfd.uncheckedTasks) {
       output += "- [ ] " + t + "\n";
     }

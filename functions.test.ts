@@ -39,7 +39,7 @@ describe("Task Processing Functions", () => {
   describe("parseTasksForDate", () => {
     it("should extract task text from checked task", () => {
       let fc: FileContent = {
-        fileName: "2025-08-01.md",
+        fileName: "2025-08-01",
         lines: ["- [x] Buy eggs", "not a task", "- [ ] Buy bananas"],
       };
       const result: TasksForDate = parseTasksForDate(fc);
@@ -55,46 +55,56 @@ describe("Task Processing Functions", () => {
   describe("filterAndAggregateTasks", () => {
     it("should succeed in the basic case", () => {
       let fc1: FileContent = {
-        fileName: "2025-08-01.md",
+        fileName: "2025-08-01",
         lines: ["- [ ] Buy eggs", "not a task", "- [ ] Buy bananas"],
       };
       let fc2: FileContent = {
-        fileName: "2025-08-02.md",
+        fileName: "2025-08-02",
+        lines: [
+          "- [x] Buy eggs",
+          "not a task",
+          "- [ ] Buy bananas",
+          "- [ ] Buy milk",
+        ],
+      };
+      let fc3: FileContent = {
+        fileName: "2025-08-03",
         lines: ["- [x] Buy eggs", "not a task", "- [ ] Buy bananas"],
       };
       const result1: TasksForDate = parseTasksForDate(fc1);
       const result2: TasksForDate = parseTasksForDate(fc2);
-      const fcs = [result2, result1];
+      const result3: TasksForDate = parseTasksForDate(fc3);
+      const fcs = [result3, result2, result1];
 
       // results should only have 1 heading with "buy bananas" for 8/2
 
       const finalResult = filterAndAggregateTasks(fcs);
-      // console.log(finalResult);
-      expect(finalResult.length).toBe(1);
+      expect(finalResult.length).toBe(2);
+      expect(finalResult[0].date).toStrictEqual(new Date("2025-08-02"));
+      expect(finalResult[1].date).toStrictEqual(new Date("2025-08-01"));
     });
   });
   describe("generateOutput", () => {
     it("handles the basic case", () => {
       let fc1: FileContent = {
-        fileName: "2025-08-01.md",
+        fileName: "2025-08-01",
         lines: ["- [ ] Buy eggs", "not a task", "- [ ] Buy bananas"],
       };
       let fc2: FileContent = {
-        fileName: "2025-08-02.md",
+        fileName: "2025-08-02",
         lines: ["- [x] Buy eggs", "not a task", "- [ ] Buy bananas"],
       };
       const result1: TasksForDate = parseTasksForDate(fc1);
       const result2: TasksForDate = parseTasksForDate(fc2);
       const fcs = [result2, result1];
 
-      // results should only have 1 heading with "buy bananas" for 8/2
+      // results should only have 1 heading with "buy bananas" for 8/1
 
       const finalResult = filterAndAggregateTasks(fcs);
-      // console.log(finalResult);
       expect(finalResult.length).toBe(1);
 
       const output = generateOutput(finalResult);
-      expect(output).toBe("2025-08-02\n- [ ] Buy bananas\n\n");
+      expect(output).toBe("#### 2025-08-01\n- [ ] Buy bananas\n\n");
     });
   });
 });
