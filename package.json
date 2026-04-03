@@ -4,8 +4,9 @@
   "description": "Obsidian plugin that adds a button to insert aggregate previous daily note's tasks into the current note",
   "main": "main.js",
   "scripts": {
-    "dev": "esbuild main.ts --bundle --external:obsidian --format=cjs --platform=node --outfile=main.js --watch",
-    "build": "esbuild main.ts --bundle --external:obsidian --format=cjs --platform=node --outfile=main.js --minify",
+    "dev": "node esbuild.config.mjs",
+    "build": "node esbuild.config.mjs production",
+    "install:obsidian": "node scripts/install-obsidian.mjs",
     "test": "vitest --inspect-brk --no-file-parallelism",
     "test:run": "vitest run",
     "test:ui": "vitest --ui"
