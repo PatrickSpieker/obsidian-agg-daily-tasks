@@ -1,6 +1,13 @@
 import esbuild from "esbuild";
 import process from "process";
 import builtins from "builtin-modules";
+import { copyFileSync, existsSync, mkdirSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const pluginId = "agg-daily-tasks";
 
 const banner =
 `/*
@@ -10,6 +17,37 @@ if you want to view the source, please visit the github repository of this plugi
 `;
 
 const prod = (process.argv[2] === 'production');
+
+function vaultCopyPlugin() {
+	return {
+		name: "vault-copy",
+		setup(build) {
+			build.onEnd((result) => {
+				if (result.errors.length > 0) return;
+				const vaultEnv = process.env.OBSIDIAN_VAULT;
+				if (!vaultEnv) return;
+				const vaultPath = path.resolve(vaultEnv);
+				const destDir =
+					path.basename(vaultPath) === pluginId
+						? vaultPath
+						: path.join(vaultPath, ".obsidian", "plugins", pluginId);
+				try {
+					mkdirSync(destDir, { recursive: true });
+					for (const f of ["main.js", "manifest.json"]) {
+						copyFileSync(path.join(__dirname, f), path.join(destDir, f));
+					}
+					for (const f of ["styles.css"]) {
+						const src = path.join(__dirname, f);
+						if (existsSync(src)) copyFileSync(src, path.join(destDir, f));
+					}
+					console.log(`[vault-copy] Copied plugin files to ${destDir}`);
+				} catch (err) {
+					console.warn(`[vault-copy] Warning: could not copy to vault: ${err.message}`);
+				}
+			});
+		},
+	};
+}
 
 const context = await esbuild.context({
 	banner: {
@@ -38,6 +76,7 @@ const context = await esbuild.context({
 	sourcemap: prod ? false : 'inline',
 	treeShaking: true,
 	outfile: 'main.js',
+	plugins: prod ? [] : [vaultCopyPlugin()],
 });
 
 if (prod) {
