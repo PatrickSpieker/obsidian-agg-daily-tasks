@@ -84,7 +84,9 @@ export default class AggDailyTasksPlugin extends Plugin {
     let taskCount = 0;
 
     for (const t of sortedNewTasksState) {
-      taskCount += t.uncheckedTasks.length;
+      for (const group of t.uncheckedGroups) {
+        taskCount += group.tasks.length;
+      }
     }
     finalOutput = generateOutput(sortedNewTasksState);
 
