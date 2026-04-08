@@ -38,7 +38,7 @@ Search "aggregate daily tasks" in the community plugin browser
 
 1. Clone this repository.
 2. Install dependencies with `pnpm install` (or `npm install`).
-3. Run `pnpm run install:obsidian -- /path/to/your/vault` (or `npm run install:obsidian -- ...`).
+3. Run `pnpm run install:obsidian /path/to/your/vault` (or `npm run install:obsidian -- /path/to/your/vault`).
 4. Reload Obsidian with `Cmd/Ctrl+R`.
 5. Go to `Settings -> Community Plugins` and enable `Aggregate Daily Tasks` if it is not already enabled.
 
@@ -83,7 +83,7 @@ To work on the plugin with automatic rebuilds and live-copying into your vault:
 > `export OBSIDIAN_VAULT="/path/to/vault/.obsidian/plugins/agg-daily-tasks"`
 
 If `OBSIDIAN_VAULT` is unset, the watcher still rebuilds `main.js` in the repo —
-deploy manually or use `pnpm run install:obsidian -- /path/to/vault`.
+deploy manually or use `pnpm run install:obsidian /path/to/vault`.
 
 #### Available scripts
 
@@ -91,7 +91,7 @@ deploy manually or use `pnpm run install:obsidian -- /path/to/vault`.
 |---|---|
 | `pnpm dev` | Watch mode — rebuilds on every save, auto-copies to vault if `OBSIDIAN_VAULT` is set |
 | `pnpm build` | Production build (minified, no source maps) |
-| `pnpm run install:obsidian -- <vault-path>` | One-shot build + copy to vault |
+| `pnpm run install:obsidian <vault-path>` | One-shot build + copy to vault |
 | `pnpm test:run` | Run tests once |
 | `pnpm test` | Run tests with debugger attached |
 | `pnpm test:ui` | Run tests with Vitest UI |
